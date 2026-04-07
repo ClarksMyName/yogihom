@@ -1,0 +1,29 @@
+{
+  "name": "yogahom",
+  "version": "1.0.0",
+  "description": "",
+  "main": "yogiserver.cjs",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node yogiserver.cjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ClarksMyName/yogihom.git"
+  },
+  "homepage": "https://github.com/ClarksMyName/yogihom#readme",
+  "bugs": {
+    "url": "https://github.com/ClarksMyName/yogihom/issues"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1",
+    "heroku": "^11.1.1",
+    "mongodb": "^7.1.1",
+    "mongoose": "^9.4.1",
+    "mongoose-int32": "^0.6.0",
+    "mongosh": "^2.8.2"
+  }
+}
