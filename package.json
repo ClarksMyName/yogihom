@@ -1,12 +1,15 @@
 {
   "name": "yogahom",
   "version": "1.0.0",
-  "description": "",
+  "description": "Yoga H'om MERN application",
   "main": "yogiserver.cjs",
   "type": "commonjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node yogiserver.cjs"
+  },
+  "engines": {
+    "node": "24.x"
   },
   "repository": {
     "type": "git",
@@ -19,7 +22,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "express": "^5.2.1",
+    "express-session": "^1.19.0",
     "mongodb": "^7.1.1",
     "mongoose": "^9.4.1",
     "mongoose-int32": "^0.6.0"
