@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yoga H'om • Package Management</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body class="layout--sidebar background">
+  <aside class="sidebar">
+    <a class="logo-wrap" href="/htmls/dashboard.html">
+      <img src="../images/HomLogo.png" alt="Yoga H'om Logo" class="logo" />
+    </a>
+
+    <nav class="nav">
+      <a id="dashboard" href="/htmls/dashboard.html">Dashboard</a>
+      <a id="instructors" href="/htmls/instructor.html">Instructors</a>
+      <a id="classes" href="/htmls/class-schedule.html">Classes</a>
+      <a id="classCheckin" href="/htmls/class-checkin.html">Class Check-In</a>
+      <a id="classRecords" href="/htmls/class-records.html">Class Records</a>
+      <a id="customers" href="/htmls/customers.html">Customers</a>
+      <a id="packageEdit" href="/htmls/package-edit.html" class="active">Packages</a>
+      <a id="packageSales" href="/htmls/package-sales.html">Package Sales</a>
+      <a id="userManagement" href="/htmls/user-management.html">User Management</a>
+      <a id="waiver" href="/htmls/waiver.html">Waiver</a>
+      <a id="logout" href="/logout">Logout</a>
+    </nav>
+  </aside>
+
+  <main class="main-bg">
+    <div class="overlay"></div>
+
+    <section class="welcome-box" style="max-width: 1000px;">
+      <h1>Package Management</h1>
+      <p id="roleLabel"><strong>Role:</strong> Loading...</p>
+      <p id="pageMessage" class="error-message" style="display:none;"></p>
+
+      <div class="grid-2">
+        <div id="packageFormSection">
+          <h2>Add / Update Package</h2>
+
+          <form id="packageForm">
+            <label for="packageType">Package Type</label>
+            <select id="packageType" name="packageType" class="styled-select">
+              <option value="regular">Regular</option>
+              <option value="senior">Senior</option>
+            </select>
+
+            <label for="packageId">Package ID</label>
+            <input type="text" id="packageId" name="packageId" readonly />
+
+            <label for="packageName">Package Name</label>
+            <input type="text" id="packageName" name="packageName" required />
+
+            <label for="description">Description</label>
+            <textarea id="description" name="description"></textarea>
+
+            <label for="classAmount">Class Amount</label>
+            <input type="number" id="classAmount" name="classAmount" min="1" required />
+
+            <label for="price">Price</label>
+            <input type="number" id="price" name="price" min="0" step="0.01" required />
+
+            <div class="btn-row">
+              <button type="submit" class="btn btn--primary" id="savePackage">Save Package</button>
+              <button type="button" class="btn" id="updatePackage">Update Package</button>
+              <button type="button" class="btn btn--danger" id="deletePackage">Delete Package</button>
+            </div>
+          </form>
+        </div>
+
+        <div>
+          <h2>Find Package</h2>
+
+          <label for="searchPackage">Search by Package ID or Name</label>
+          <input type="text" id="searchPackage" placeholder="Enter package ID or name" />
+
+          <div class="btn-row" style="justify-content:flex-start; margin-top: 1rem;">
+            <button type="button" class="btn btn--primary" id="searchPackageBtn">Search</button>
+            <button type="button" class="btn" id="loadAllPackages">Load All</button>
+            <button type="button" class="btn" id="newPackage">New</button>
+          </div>
+
+          <h2 style="margin-top: 1.5rem;">Package List</h2>
+          <div id="packageList" style="text-align:left;"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const pageMessage = document.getElementById("pageMessage");
+
+    function showMessage(message, isError = false) {
+      pageMessage.textContent = message;
+      pageMessage.style.display = "block";
+      pageMessage.style.background = isError ? "#fdeaea" : "#e8f7ee";
+      pageMessage.style.color = isError ? "#b42318" : "#166534";
+      pageMessage.style.borderColor = isError ? "#f5c2c0" : "#b7ebc6";
+    }
+
+    function hideRestrictedLinks(user) {
+      const memberHidden = [
+        "instructors",
+        "classRecords",
+        "customers",
+        "packageEdit",
+        "packageSales",
+        "userManagement"
+      ];
+
+      if (user.role === "member") {
+        memberHidden.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "none";
+        });
+      }
+    }
+
+    async function loadUser() {
+      const res = await fetch("/api/me");
+
+      if (!res.ok) {
+        window.location.href = "/index.html";
+        return null;
+      }
+
+      const user = await res.json();
+
+      document.getElementById("roleLabel").innerHTML =
+        "<strong>Role:</strong> " + (user.role || "Unknown");
+
+      hideRestrictedLinks(user);
+
+      if (user.role === "member") {
+        showMessage("Members do not have access to Package Management.", true);
+        document.getElementById("packageFormSection").style.display = "none";
+        document.getElementById("searchPackage").style.display = "none";
+        document.getElementById("searchPackageBtn").style.display = "none";
+        document.getElementById("loadAllPackages").style.display = "none";
+        document.getElementById("newPackage").style.display = "none";
+        return null;
+      }
+
+      return user;
+    }
+
+    function resetPackageForm() {
+      document.getElementById("packageForm").reset();
+      document.getElementById("packageType").value = "regular";
+    }
+
+    function fillForm(pkg) {
+      document.getElementById("packageId").value = pkg.packageId || "";
+      document.getElementById("packageName").value = pkg.packageName || "";
+      document.getElementById("description").value = pkg.description || "";
+      document.getElementById("classAmount").value = pkg.classAmount ?? "";
+      document.getElementById("price").value = pkg.price ?? "";
+
+      if ((pkg.packageId || "").startsWith("SP")) {
+        document.getElementById("packageType").value = "senior";
+      } else {
+        document.getElementById("packageType").value = "regular";
+      }
+    }
+
+    function renderPackageList(packages) {
+      const list = document.getElementById("packageList");
+
+      if (!Array.isArray(packages) || packages.length === 0) {
+        list.innerHTML = "<p>No packages found.</p>";
+        return;
+      }
+
+      list.innerHTML = packages.map(pkg => `
+        <div class="card" style="max-width:none; margin-bottom: 1rem; padding: 1rem;">
+          <strong>${pkg.packageId}</strong><br>
+          ${pkg.packageName || ""}<br>
+          ${pkg.description || ""}<br>
+          Classes: ${pkg.classAmount ?? 0}<br>
+          Price: $${Number(pkg.price || 0).toFixed(2)}
+          <div style="margin-top: 0.75rem;">
+            <button class="btn btn--primary" onclick="selectPackage('${pkg.packageId}')">Select</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    window.selectPackage = async function(packageId) {
+      try {
+        const res = await fetch(`/api/package/getPackage?packageId=${encodeURIComponent(packageId)}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMessage(data.message || data.error || "Failed to load package.", true);
+          return;
+        }
+
+        fillForm(data);
+        showMessage("Package loaded.");
+      } catch (err) {
+        showMessage("Failed to load package.", true);
+      }
+    };
+
+    async function getNextPackageId() {
+      const type = document.getElementById("packageType").value;
+
+      try {
+        const res = await fetch(`/api/package/getNextId?type=${encodeURIComponent(type)}`);
+        const data = await res.json();
+        document.getElementById("packageId").value = data.nextId || "";
+      } catch (err) {
+        showMessage("Failed to get next package ID.", true);
+      }
+    }
+
+    async function loadAllPackages() {
+      try {
+        const res = await fetch("/api/package/getAll");
+        const data = await res.json();
+
+        if (!res.ok) {
+          renderPackageList([]);
+          showMessage(data.message || data.error || "Failed to load packages.", true);
+          return;
+        }
+
+        renderPackageList(data);
+      } catch (err) {
+        renderPackageList([]);
+        showMessage("Failed to load packages.", true);
+      }
+    }
+
+    async function searchPackage() {
+      const search = document.getElementById("searchPackage").value.trim();
+
+      if (!search) {
+        showMessage("Enter a package ID or name to search.", true);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/package/search?search=${encodeURIComponent(search)}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          renderPackageList([]);
+          showMessage(data.message || "No package found.", true);
+          return;
+        }
+
+        renderPackageList(data);
+      } catch (err) {
+        renderPackageList([]);
+        showMessage("Failed to search packages.", true);
+      }
+    }
+
+    async function savePackage(event) {
+      event.preventDefault();
+
+      const payload = {
+        packageId: document.getElementById("packageId").value.trim(),
+        packageName: document.getElementById("packageName").value.trim(),
+        description: document.getElementById("description").value.trim(),
+        classAmount: Number(document.getElementById("classAmount").value || 0),
+        price: Number(document.getElementById("price").value || 0)
+      };
+
+      try {
+        const res = await fetch("/api/package/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMessage(data.message || data.error || "Failed to add package.", true);
+          return;
+        }
+
+        showMessage("Package added successfully.");
+        resetPackageForm();
+        await getNextPackageId();
+        await loadAllPackages();
+      } catch (err) {
+        showMessage("Failed to add package.", true);
+      }
+    }
+
+    async function updatePackage() {
+      const payload = {
+        packageId: document.getElementById("packageId").value.trim(),
+        packageName: document.getElementById("packageName").value.trim(),
+        description: document.getElementById("description").value.trim(),
+        classAmount: Number(document.getElementById("classAmount").value || 0),
+        price: Number(document.getElementById("price").value || 0)
+      };
+
+      try {
+        const res = await fetch("/api/package/updatePackage", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMessage(data.message || data.error || "Failed to update package.", true);
+          return;
+        }
+
+        showMessage("Package updated successfully.");
+        await loadAllPackages();
+      } catch (err) {
+        showMessage("Failed to update package.", true);
+      }
+    }
+
+    async function deletePackage() {
+      const packageId = document.getElementById("packageId").value.trim();
+
+      if (!packageId) {
+        showMessage("Select a package first.", true);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/package/deletePackage?packageId=${encodeURIComponent(packageId)}`, {
+          method: "DELETE"
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMessage(data.message || data.error || "Failed to delete package.", true);
+          return;
+        }
+
+        showMessage("Package deleted successfully.");
+        resetPackageForm();
+        await getNextPackageId();
+        await loadAllPackages();
+      } catch (err) {
+        showMessage("Failed to delete package.", true);
+      }
+    }
+
+    document.getElementById("packageForm").addEventListener("submit", savePackage);
+    document.getElementById("updatePackage").addEventListener("click", updatePackage);
+    document.getElementById("deletePackage").addEventListener("click", deletePackage);
+    document.getElementById("searchPackageBtn").addEventListener("click", searchPackage);
+    document.getElementById("loadAllPackages").addEventListener("click", loadAllPackages);
+    document.getElementById("newPackage").addEventListener("click", async () => {
+      resetPackageForm();
+      await getNextPackageId();
+      showMessage("Ready to add a new package.");
+    });
+    document.getElementById("packageType").addEventListener("change", getNextPackageId);
+
+    (async function init() {
+      const user = await loadUser();
+      if (!user) return;
+      resetPackageForm();
+      await getNextPackageId();
+      await loadAllPackages();
+    })();
+  </script>
+</body>
+</html>

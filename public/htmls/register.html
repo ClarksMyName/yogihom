@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Account</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body class="layout--center">
+  <main class="card card--wide">
+    <h1>Create Account</h1>
+
+    <p id="error-message" class="error-message" style="display:none;"></p>
+
+    <form action="/register" method="POST">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" required />
+
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required />
+
+      <label for="firstName">First</label>
+      <input type="text" id="firstName" name="firstName" required />
+
+      <label for="lastName">Last</label>
+      <input type="text" id="lastName" name="lastName" required />
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required />
+
+      <label for="phone">Phone Number</label>
+      <input type="tel" id="phone" name="phone" required />
+
+      <label for="address">Address</label>
+      <textarea id="address" name="address"></textarea>
+
+      <button class="btn btn--primary" type="submit">Create Account</button>
+    </form>
+
+    <p style="margin-top: 12px;">
+      Already have an account?
+      <a href="/index.html">Back to login</a>
+    </p>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get("error");
+    const errorBox = document.getElementById("error-message");
+
+    if (error) {
+      let message = "";
+
+      if (error === "missing_fields") {
+        message = "Please fill in all required fields.";
+      } else if (error === "username_taken") {
+        message = "That username is already in use.";
+      } else if (error === "email_taken") {
+        message = "That email is already in use.";
+      } else if (error === "register_failed") {
+        message = "Could not create account. Please try again.";
+      }
+
+      if (message) {
+        errorBox.textContent = message;
+        errorBox.style.display = "block";
+      }
+
+      window.history.replaceState({}, document.title, "/htmls/register.html");
+    }
+  </script>
+</body>
+</html>

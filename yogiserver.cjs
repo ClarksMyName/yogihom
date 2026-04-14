@@ -18,8 +18,8 @@ mongoose
     console.error("❌ MongoDB connection error:", err.message);
   });
 
-// ---------- OPTIONAL MODEL IMPORTS ----------
-let User, Customer, Checkin, YogaClass, Package, Sale;
+// ---------- MODEL IMPORTS ----------
+let User, Customer, ClassRecord, YogaClass, Package, PackageSale;
 
 try {
   User = require("./models/userModel.cjs");
@@ -28,7 +28,7 @@ try {
   Customer = require("./models/customerModel.cjs");
 } catch {}
 try {
-  Checkin = require("./models/checkinModel.cjs");
+  ClassRecord = require("./models/classRecordModel.cjs");
 } catch {}
 try {
   YogaClass = require("./models/classModel.cjs");
@@ -36,9 +36,7 @@ try {
 try {
   Package = require("./models/packageModel.cjs");
 } catch {}
-try {
-  Sale = require("./models/saleModel.cjs");
-} catch {}
+
 
 // ---------- MIDDLEWARE ----------
 app.use(express.static("public"));
@@ -87,53 +85,71 @@ app.get("/index.html", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// ---------- EXISTING ROUTE MODULES ----------
+// ---------- ROUTE MODULES ----------
 app.use("/api/instructor", require("./routes/instructorRoutes.cjs"));
+//console.log("instructor ok");
 
-try {
-  app.use("/api/class", require("./routes/classRoutes.cjs"));
-} catch {}
-try {
-  app.use("/api/customer", require("./routes/customerRoutes.cjs"));
-} catch {}
-try {
-  app.use("/api/package", require("./routes/packageRoutes.cjs"));
-} catch {}
-try {
-  app.use("/api/checkin", require("./routes/checkinRoutes.cjs"));
-} catch {}
+app.use("/api/class", require("./routes/classRoutes.cjs"));
+//console.log("class ok");
+
+app.use("/api/customer", require("./routes/customerRoutes.cjs"));
+//console.log("customer ok");
+
+app.use("/api/package", require("./routes/packageRoutes.cjs"));
+//console.log("package ok");
+
+app.use("/api/classRecord", require("./routes/classRecordRoutes.cjs"));
+//console.log("classRecord ok");
+
+app.use("/api/packageSale", require("./routes/packageSaleRoutes.cjs"));
+//console.log("packageSale ok");
+
+app.use("/api/waiver", require("./routes/waiverRoutes.cjs"));
+//console.log("waiver ok");
+
+app.use("/api/user", require("./routes/userRoutes.cjs"));
+//console.log("user ok");
 
 // ---------- LOGIN ----------
 app.post("/login", async (req, res) => {
   try {
-    if (!User) return res.status(500).send("User model not installed yet");
+    if (!User) {
+      return res.redirect("/index.html?error=login_failed");
+    }
 
     const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.redirect("/index.html?error=missing_fields");
+    }
+
     const user = await User.findOne({ username });
 
     if (!user) {
-      return res.status(401).send("Invalid username or password");
+      return res.redirect("/index.html?error=login_failed");
     }
 
     const validPassword = await bcrypt.compare(password, user.passwordHash);
+
     if (!validPassword) {
-      return res.status(401).send("Invalid username or password");
+      return res.redirect("/index.html?error=login_failed");
     }
 
     req.session.user = {
       username: user.username,
       role: user.role,
-      customerId: user.customerId || ""
+      customerId: user.customerId || "",
+      userId: user.userId || ""
     };
 
-    if (user.role === "admin") {
+    if (user.role === "admin" || user.role === "staff") {
       return res.redirect("/htmls/all-in-one.html");
     }
 
-    return res.redirect("/htmls/member-dashboard.html");
+    return res.redirect("/htmls/dashboard.html");
   } catch (err) {
     console.error("Login error:", err.message);
-    res.status(500).send("Server error during login");
+    return res.redirect("/index.html?error=login_failed");
   }
 });
 
@@ -141,39 +157,54 @@ app.post("/login", async (req, res) => {
 app.post("/register", async (req, res) => {
   try {
     if (!User || !Customer) {
-      return res.status(500).send("User/Customer models not installed yet");
+      return res.redirect("/htmls/register.html?error=register_failed");
     }
 
-    const { username, password } = req.body;
+    const {
+      username,
+      password,
+      firstName,
+      lastName,
+      email,
+      phone,
+      address
+    } = req.body;
 
-    if (!username || !password) {
-      return res.status(400).send("Username and password are required");
+    if (!username || !password || !firstName || !lastName || !email || !phone) {
+      return res.redirect("/htmls/register.html?error=missing_fields");
     }
 
     const existingUser = await User.findOne({ username });
     if (existingUser) {
-      return res.status(400).send("Username already exists");
+      return res.redirect("/htmls/register.html?error=username_taken");
     }
 
-    const lastUserWithCustomerId = await User.find({
-      customerId: { $exists: true, $ne: null }
-    })
-      .sort({ customerId: -1 })
-      .limit(1);
+    const existingEmail = await Customer.findOne({ email });
+    if (existingEmail) {
+      return res.redirect("/htmls/register.html?error=email_taken");
+    }
 
-    let nextNumber = 1;
-    if (lastUserWithCustomerId.length > 0) {
-      const lastCustomerId = lastUserWithCustomerId[0].customerId;
-      const match = lastCustomerId.match(/\d+/);
+    const customers = await Customer.find({
+      customerId: { $regex: "^C\\d+$" }
+    }).sort({ customerId: 1 });
+
+    let maxNumber = 0;
+
+    for (const customer of customers) {
+      const match = customer.customerId.match(/\d+$/);
       if (match) {
-        nextNumber = parseInt(match[0], 10) + 1;
+        const num = parseInt(match[0], 10);
+        if (num > maxNumber) {
+          maxNumber = num;
+        }
       }
     }
 
-    const customerId = `Y${String(nextNumber).padStart(3, "0")}`;
+    const customerId = `C${String(maxNumber + 1).padStart(3, "0")}`;
     const passwordHash = await bcrypt.hash(password, 10);
 
     const newUser = new User({
+      userId: "",
       username,
       passwordHash,
       role: "member",
@@ -184,20 +215,27 @@ app.post("/register", async (req, res) => {
 
     await Customer.create({
       customerId,
-      username,
+      firstName,
+      lastName,
+      email,
+      phone,
+      senior: false,
+      address: address || "",
+      preferredContact: "email",
       classBalance: 0
     });
 
     req.session.user = {
       username: newUser.username,
       role: newUser.role,
-      customerId: newUser.customerId
+      customerId: newUser.customerId,
+      userId: newUser.userId || ""
     };
 
-    return res.redirect("/htmls/member-dashboard.html");
+    return res.redirect("/htmls/dashboard.html");
   } catch (err) {
     console.error("Register error:", err.message);
-    res.status(500).send("Server error during registration");
+    return res.redirect("/htmls/register.html?error=register_failed");
   }
 });
 
@@ -211,7 +249,32 @@ app.get("/logout", (req, res) => {
 // ---------- USER INFO ----------
 app.get("/api/user/me", requireLogin, async (req, res) => {
   try {
-    if (!User) return res.status(500).json({ error: "User model not installed yet" });
+    if (!User) {
+      return res.status(500).json({ error: "User model not installed yet" });
+    }
+
+    const user = await User.findOne({ username: req.session.user.username });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      username: user.username,
+      role: user.role,
+      customerId: user.customerId || ""
+    });
+  } catch (err) {
+    console.error("User info error:", err.message);
+    res.status(500).json({ error: "Failed to load user info" });
+  }
+});
+
+// Alias for newer frontend code
+app.get("/api/me", requireLogin, async (req, res) => {
+  try {
+    if (!User) {
+      return res.status(500).json({ error: "User model not installed yet" });
+    }
 
     const user = await User.findOne({ username: req.session.user.username });
     if (!user) {
@@ -230,7 +293,7 @@ app.get("/api/user/me", requireLogin, async (req, res) => {
 });
 
 // ---------- PROFILE ----------
-app.get("/api/profile/me", requireRole(["admin", "member"]), async (req, res) => {
+app.get("/api/profile/me", requireRole(["admin", "staff", "member"]), async (req, res) => {
   try {
     if (!User || !Customer) {
       return res.status(500).json({ error: "User/Customer models not installed yet" });
@@ -260,7 +323,7 @@ app.get("/api/profile/me", requireRole(["admin", "member"]), async (req, res) =>
   }
 });
 
-app.post("/api/profile/update", requireRole(["admin", "member"]), async (req, res) => {
+app.post("/api/profile/update", requireRole(["admin", "staff", "member"]), async (req, res) => {
   try {
     if (!User || !Customer) {
       return res.status(500).json({ error: "User/Customer models not installed yet" });
@@ -295,8 +358,8 @@ app.post("/api/profile/update", requireRole(["admin", "member"]), async (req, re
   }
 });
 
-// ---------- ADMIN RESET PASSWORD ----------
-app.post("/api/admin/reset-password", requireRole(["admin"]), async (req, res) => {
+// ---------- ADMIN / STAFF RESET PASSWORD ----------
+app.post("/api/admin/reset-password", requireRole(["admin", "staff"]), async (req, res) => {
   try {
     if (!User) return res.status(500).json({ error: "User model not installed yet" });
 
@@ -322,7 +385,7 @@ app.post("/api/admin/reset-password", requireRole(["admin"]), async (req, res) =
 });
 
 // ---------- CUSTOMERS / ROSTER ----------
-app.get("/api/customers", requireRole(["admin"]), async (req, res) => {
+app.get("/api/customers", requireRole(["admin", "staff"]), async (req, res) => {
   try {
     if (!Customer) return res.status(500).json({ error: "Customer model not installed yet" });
 
@@ -334,7 +397,7 @@ app.get("/api/customers", requireRole(["admin"]), async (req, res) => {
   }
 });
 
-app.get("/api/customers/me", requireRole(["admin", "member"]), async (req, res) => {
+app.get("/api/customers/me", requireRole(["admin", "staff", "member"]), async (req, res) => {
   try {
     if (!Customer) return res.status(500).json({ error: "Customer model not installed yet" });
 
@@ -350,7 +413,7 @@ app.get("/api/customers/me", requireRole(["admin", "member"]), async (req, res) 
   }
 });
 
-app.get("/api/roster", requireRole(["admin"]), async (req, res) => {
+app.get("/api/roster", requireRole(["admin", "staff"]), async (req, res) => {
   try {
     if (!Customer) return res.status(500).json({ error: "Customer model not installed yet" });
 
@@ -363,7 +426,7 @@ app.get("/api/roster", requireRole(["admin"]), async (req, res) => {
 });
 
 // ---------- CLASSES ----------
-app.get("/api/classes", requireRole(["admin", "member"]), async (req, res) => {
+app.get("/api/classes", requireRole(["admin", "staff", "member"]), async (req, res) => {
   try {
     if (!YogaClass) return res.status(500).json({ error: "Class model not installed yet" });
 
@@ -375,12 +438,13 @@ app.get("/api/classes", requireRole(["admin", "member"]), async (req, res) => {
   }
 });
 
-// ---------- CHECKINS ----------
-app.get("/api/checkins/my", requireRole(["admin", "member"]), async (req, res) => {
+// ---------- CLASS RECORDS / CHECKINS ----------
+/*
+app.get("/api/checkins/my", requireRole(["admin", "staff", "member"]), async (req, res) => {
   try {
-    if (!Checkin) return res.status(500).json({ error: "Checkin model not installed yet" });
+    if (!ClassRecord) return res.status(500).json({ error: "Class record model not installed yet" });
 
-    const checkins = await Checkin.find({
+    const checkins = await ClassRecord.find({
       customerId: req.session.user.customerId
     }).sort({ datetime: -1 });
 
@@ -391,15 +455,15 @@ app.get("/api/checkins/my", requireRole(["admin", "member"]), async (req, res) =
   }
 });
 
-app.post("/api/checkins/add", requireRole(["admin", "member"]), async (req, res) => {
+app.post("/api/checkins/add", requireRole(["admin", "staff", "member"]), async (req, res) => {
   try {
-    if (!Checkin || !Customer) {
-      return res.status(500).json({ error: "Checkin/Customer models not installed yet" });
+    if (!ClassRecord || !Customer || !YogaClass) {
+      return res.status(500).json({ error: "ClassRecord/Customer/Class models not installed yet" });
     }
 
-    const { customerId, className, datetime } = req.body;
+    const { customerId, classId, datetime } = req.body;
 
-    if (!customerId || !className || !datetime) {
+    if (!customerId || !classId || !datetime) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -412,10 +476,38 @@ app.post("/api/checkins/add", requireRole(["admin", "member"]), async (req, res)
       return res.status(404).json({ error: "Customer profile not found" });
     }
 
-    const newCheckin = new Checkin({ customerId, className, datetime });
+    const yogaClass = await YogaClass.findOne({ classId });
+    if (!yogaClass) {
+      return res.status(404).json({ error: "Class not found" });
+    }
+
+    const records = await ClassRecord.find({
+      checkinId: { $regex: "^CH\\d+$" }
+    }).sort({ checkinId: 1 });
+
+    let maxNumber = 0;
+    for (const record of records) {
+      const match = record.checkinId.match(/\d+$/);
+      if (match) {
+        const num = parseInt(match[0], 10);
+        if (num > maxNumber) {
+          maxNumber = num;
+        }
+      }
+    }
+
+    const checkinId = `CH${String(maxNumber + 1).padStart(3, "0")}`;
+
+    const newCheckin = new ClassRecord({
+      checkinId,
+      customerId,
+      classId,
+      datetime
+    });
+
     await newCheckin.save();
 
-    customer.classBalance -= 1;
+    customer.classBalance = Number(customer.classBalance || 0) - 1;
     await customer.save();
 
     res.status(201).json({
@@ -428,9 +520,9 @@ app.post("/api/checkins/add", requireRole(["admin", "member"]), async (req, res)
     res.status(500).json({ error: "Failed to save check-in" });
   }
 });
-
+*/
 // ---------- PACKAGES ----------
-app.get("/api/packages", requireRole(["admin", "member"]), async (req, res) => {
+app.get("/api/packages", requireRole(["admin", "staff", "member"]), async (req, res) => {
   try {
     if (!Package) return res.status(500).json({ error: "Package model not installed yet" });
 
@@ -442,9 +534,9 @@ app.get("/api/packages", requireRole(["admin", "member"]), async (req, res) => {
   }
 });
 
-app.post("/api/packages/assign", requireRole(["admin"]), async (req, res) => {
+app.post("/api/packages/assign", requireRole(["admin", "staff"]), async (req, res) => {
   try {
-    if (!Package || !Customer || !Sale) {
+    if (!Package || !Customer || !PackageSale) {
       return res.status(500).json({ error: "Package/Customer/Sale models not installed yet" });
     }
 
@@ -464,20 +556,37 @@ app.post("/api/packages/assign", requireRole(["admin"]), async (req, res) => {
       return res.status(404).json({ error: "Package not found" });
     }
 
+    const sales = await PackageSale.find({
+      saleId: { $regex: "^S\\d+$" }
+    }).sort({ saleId: 1 });
+
+    let maxNumber = 0;
+    for (const sale of sales) {
+      const match = sale.saleId.match(/\d+$/);
+      if (match) {
+        const num = parseInt(match[0], 10);
+        if (num > maxNumber) {
+          maxNumber = num;
+        }
+      }
+    }
+
+    const saleId = `S${String(maxNumber + 1).padStart(3, "0")}`;
     const today = new Date().toISOString().split("T")[0];
 
-    const sale = new Sale({
+    const sale = new PackageSale({
+      saleId,
       customerId,
       packageId: pkg.packageId,
-      packageName: pkg.packageName,
-      amountPaid: pkg.price,
-      classAmount: pkg.classAmount,
-      purchaseDate: today
+      purchaseDate: today,
+      startDate: today,
+      endDate: today,
+      amountPaid: pkg.price
     });
 
     await sale.save();
 
-    customer.classBalance = (customer.classBalance || 0) + (pkg.classAmount || 0);
+    customer.classBalance = Number(customer.classBalance || 0) + Number(pkg.classAmount || 0);
     await customer.save();
 
     res.status(201).json({
@@ -491,46 +600,50 @@ app.post("/api/packages/assign", requireRole(["admin"]), async (req, res) => {
   }
 });
 
-// ---------- PAGE ROUTES: ADMIN ----------
-app.get("/htmls/all-in-one.html", requireRole(["admin"]), (req, res) => {
+// ---------- PAGE ROUTES: ADMIN / STAFF ----------
+app.get("/htmls/all-in-one.html", requireRole(["admin", "staff"]), (req, res) => {
   res.sendFile(path.join(__dirname, "public", "htmls", "all-in-one.html"));
 });
 
-app.get("/htmls/dashboard.html", requireRole(["admin"]), (req, res) => {
+app.get("/htmls/dashboard.html", requireRole(["admin", "staff"]), (req, res) => {
   res.sendFile(path.join(__dirname, "public", "htmls", "dashboard.html"));
 });
 
-app.get("/htmls/instructor.html", requireRole(["admin"]), (req, res) => {
+app.get("/htmls/instructor.html", requireRole(["admin", "staff"]), (req, res) => {
   res.sendFile(path.join(__dirname, "public", "htmls", "instructor.html"));
 });
 
-app.get("/htmls/customers.html", requireRole(["admin"]), (req, res) => {
+app.get("/htmls/customers.html", requireRole(["admin", "staff"]), (req, res) => {
   res.sendFile(path.join(__dirname, "public", "htmls", "customers.html"));
 });
 
-app.get("/htmls/packages.html", requireRole(["admin"]), (req, res) => {
+app.get("/htmls/packages.html", requireRole(["admin", "staff"]), (req, res) => {
   res.sendFile(path.join(__dirname, "public", "htmls", "packages.html"));
 });
 
-app.get("/htmls/class-schedule.html", requireRole(["admin"]), (req, res) => {
+app.get("/htmls/class-schedule.html", requireRole(["admin", "staff"]), (req, res) => {
   res.sendFile(path.join(__dirname, "public", "htmls", "class-schedule.html"));
 });
 
-app.get("/htmls/check-ins.html", requireRole(["admin"]), (req, res) => {
+app.get("/htmls/check-ins.html", requireRole(["admin", "staff"]), (req, res) => {
   res.sendFile(path.join(__dirname, "public", "htmls", "check-ins.html"));
 });
 
-app.get("/htmls/roster.html", requireRole(["admin"]), (req, res) => {
+app.get("/htmls/roster.html", requireRole(["admin", "staff"]), (req, res) => {
   res.sendFile(path.join(__dirname, "public", "htmls", "roster.html"));
 });
 
-app.get("/htmls/profile.html", requireRole(["admin"]), (req, res) => {
+app.get("/htmls/profile.html", requireRole(["admin", "staff"]), (req, res) => {
   res.sendFile(path.join(__dirname, "public", "htmls", "profile.html"));
 });
 
+app.get("/htmls/user-management.html", requireRole(["admin", "staff"]), (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "htmls", "user-management.html"));
+});
+
 // ---------- PAGE ROUTES: MEMBER ----------
-app.get("/htmls/member-dashboard.html", requireRole(["member"]), (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "htmls", "member-dashboard.html"));
+app.get("/htmls/dashboard.html", requireRole(["member"]), (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "htmls", "dashboard.html"));
 });
 
 app.get("/htmls/member-packages.html", requireRole(["member"]), (req, res) => {
@@ -553,8 +666,13 @@ app.get("/htmls/:page", requireLogin, (req, res) => {
   res.status(404).send("Page not found");
 });
 
+app.get("/htmls/register.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "htmls", "register.html"));
+});
+
 // ---------- START SERVER ----------
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Open http://localhost:${PORT}/index.html in your browser.`);
 });

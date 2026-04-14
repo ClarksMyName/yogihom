@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yoga H'om • Customers</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body class="layout--sidebar background">
+  <aside class="sidebar">
+    <a class="logo-wrap" href="/htmls/dashboard.html">
+      <img src="../images/HomLogo.png" alt="Yoga H'om Logo" class="logo" />
+    </a>
+
+    <nav class="nav">
+      <a id="dashboard" href="/htmls/dashboard.html">Dashboard</a>
+      <a id="instructors" href="/htmls/instructor.html">Instructors</a>
+      <a id="classes" href="/htmls/class-schedule.html">Classes</a>
+      <a id="classCheckin" href="/htmls/class-checkin.html">Class Check-In</a>
+      <a id="classRecords" href="/htmls/class-records.html">Class Records</a>
+      <a id="customers" href="/htmls/customers.html" class="active">Customers</a>
+      <a id="packageEdit" href="/htmls/package-edit.html">Packages</a>
+      <a id="packageSales" href="/htmls/package-sales.html">Package Sales</a>
+      <a id="userManagement" href="/htmls/user-management.html">User Management</a>
+      <a id="waiver" href="/htmls/waiver.html">Waiver</a>
+      <a id="logout" href="/logout">Logout</a>
+    </nav>
+  </aside>
+
+  <main class="main-bg">
+    <div class="overlay"></div>
+
+    <section class="welcome-box" style="max-width: 1000px;">
+      <h1>Customer Management</h1>
+      <p id="roleLabel"><strong>Role:</strong> Loading...</p>
+      <p id="pageMessage" class="error-message" style="display:none;"></p>
+
+      <div class="grid-2">
+        <div>
+          <h2>Add / Update Customer</h2>
+          <form id="customerForm">
+            <label for="customerId">Customer ID</label>
+            <input type="text" id="customerId" name="customerId" readonly />
+
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName" name="firstName" required />
+
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName" name="lastName" required />
+
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required />
+
+            <label for="phone">Phone</label>
+            <input type="text" id="phone" name="phone" required />
+
+            <label for="address">Address</label>
+            <textarea id="address" name="address"></textarea>
+
+            <label for="preferredContact">Preferred Contact</label>
+            <select id="preferredContact" name="preferredContact" class="styled-select">
+              <option value="email">Email</option>
+              <option value="phone">Phone</option>
+            </select>
+
+            <label for="senior">Senior</label>
+            <select id="senior" name="senior" class="styled-select">
+              <option value="false">No</option>
+              <option value="true">Yes</option>
+            </select>
+
+            <label for="classBalance">Class Balance</label>
+            <input type="number" id="classBalance" name="classBalance" min="0" value="0" />
+
+            <div class="btn-row">
+              <button type="submit" class="btn btn--primary" id="saveCustomer">Save Customer</button>
+              <button type="button" class="btn" id="updateCustomer">Update Customer</button>
+              <button type="button" class="btn btn--danger" id="deleteCustomer">Delete Customer</button>
+            </div>
+          </form>
+        </div>
+
+        <div>
+          <h2>Find Customer</h2>
+
+          <label for="searchCustomer">Search by First or Last Name</label>
+          <input type="text" id="searchCustomer" placeholder="Enter name" />
+
+          <div class="btn-row" style="justify-content:flex-start; margin-top: 1rem;">
+            <button type="button" class="btn btn--primary" id="searchCustomerBtn">Search</button>
+            <button type="button" class="btn" id="loadAllCustomers">Load All</button>
+            <button type="button" class="btn" id="newCustomer">New</button>
+          </div>
+
+          <h2 style="margin-top: 1.5rem;">Customer List</h2>
+          <div id="customerList" style="text-align:left;"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const pageMessage = document.getElementById("pageMessage");
+
+    function showMessage(message, isError = false) {
+      pageMessage.textContent = message;
+      pageMessage.style.display = "block";
+      pageMessage.style.background = isError ? "#fdeaea" : "#e8f7ee";
+      pageMessage.style.color = isError ? "#b42318" : "#166534";
+      pageMessage.style.borderColor = isError ? "#f5c2c0" : "#b7ebc6";
+    }
+
+    function hideRestrictedLinks(user) {
+      const memberHidden = [
+        "instructors",
+        "classRecords",
+        "customers",
+        "packageEdit",
+        "packageSales",
+        "userManagement"
+    ];
+
+      if (user.role === "member") {
+        memberHidden.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "none";
+        });
+      }
+    }
+
+    async function loadUser() {
+      const res = await fetch("/api/me");
+      if (!res.ok) {
+        window.location.href = "/index.html";
+        return null;
+      }
+
+      const user = await res.json();
+      document.getElementById("roleLabel").innerHTML =
+        "<strong>Role:</strong> " + (user.role || "Unknown");
+
+      hideRestrictedLinks(user);
+
+      if (user.role === "member") {
+        showMessage("Members do not have access to Customer Management.", true);
+        document.getElementById("customerForm").style.display = "none";
+        document.getElementById("searchCustomer").style.display = "none";
+        document.getElementById("searchCustomerBtn").style.display = "none";
+        document.getElementById("loadAllCustomers").style.display = "none";
+        document.getElementById("newCustomer").style.display = "none";
+        return null;
+      }
+
+      return user;
+    }
+
+    function fillForm(customer) {
+      document.getElementById("customerId").value = customer.customerId || "";
+      document.getElementById("firstName").value = customer.firstName || "";
+      document.getElementById("lastName").value = customer.lastName || "";
+      document.getElementById("email").value = customer.email || "";
+      document.getElementById("phone").value = customer.phone || "";
+      document.getElementById("address").value = customer.address || "";
+      document.getElementById("preferredContact").value = customer.preferredContact || "email";
+      document.getElementById("senior").value = String(customer.senior ?? false);
+      document.getElementById("classBalance").value = customer.classBalance ?? 0;
+    }
+
+    function renderCustomerList(customers) {
+      const list = document.getElementById("customerList");
+
+      if (!Array.isArray(customers) || customers.length === 0) {
+        list.innerHTML = "<p>No customers found.</p>";
+        return;
+      }
+
+      list.innerHTML = customers.map(customer => `
+        <div class="card" style="max-width:none; margin-bottom: 1rem; padding: 1rem;">
+          <strong>${customer.customerId}</strong><br>
+          ${customer.firstName || ""} ${customer.lastName || ""}<br>
+          ${customer.email || ""}<br>
+          ${customer.phone || ""}<br>
+          Balance: ${customer.classBalance ?? 0}
+          <div style="margin-top: 0.75rem;">
+            <button class="btn btn--primary" onclick="selectCustomer('${customer.customerId}')">Select</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    window.selectCustomer = async function(customerId) {
+      try {
+        const res = await fetch(`/api/customer/getCustomer?customerId=${encodeURIComponent(customerId)}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMessage(data.message || data.error || "Failed to load customer.", true);
+          return;
+        }
+
+        fillForm(data);
+        showMessage("Customer loaded.");
+      } catch (err) {
+        showMessage("Failed to load customer.", true);
+      }
+    };
+
+    async function getNextCustomerId() {
+      const res = await fetch("/api/customer/getNextId");
+      const data = await res.json();
+      document.getElementById("customerId").value = data.nextId || "";
+    }
+
+    async function loadAllCustomers() {
+      const res = await fetch("/api/customer/getAll");
+      const data = await res.json();
+      renderCustomerList(data);
+    }
+
+    async function searchCustomer() {
+      const search = document.getElementById("searchCustomer").value.trim();
+
+      if (!search) {
+        showMessage("Enter a first or last name to search.", true);
+        return;
+      }
+
+      const res = await fetch(`/api/customer/search?search=${encodeURIComponent(search)}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        renderCustomerList([]);
+        showMessage(data.message || "No customer found.", true);
+        return;
+      }
+
+      renderCustomerList(data);
+    }
+
+    async function saveCustomer(event) {
+      event.preventDefault();
+
+      const payload = {
+        customerId: document.getElementById("customerId").value.trim(),
+        firstName: document.getElementById("firstName").value.trim(),
+        lastName: document.getElementById("lastName").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        address: document.getElementById("address").value.trim(),
+        preferredContact: document.getElementById("preferredContact").value,
+        senior: document.getElementById("senior").value === "true",
+        classBalance: Number(document.getElementById("classBalance").value || 0)
+      };
+
+      const res = await fetch("/api/customer/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.message || data.error || "Failed to add customer.", true);
+        return;
+      }
+
+      showMessage("Customer added successfully.");
+      document.getElementById("customerForm").reset();
+      await getNextCustomerId();
+      await loadAllCustomers();
+    }
+
+    async function updateCustomer() {
+      const payload = {
+        customerId: document.getElementById("customerId").value.trim(),
+        firstName: document.getElementById("firstName").value.trim(),
+        lastName: document.getElementById("lastName").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        address: document.getElementById("address").value.trim(),
+        preferredContact: document.getElementById("preferredContact").value,
+        senior: document.getElementById("senior").value === "true",
+        classBalance: Number(document.getElementById("classBalance").value || 0)
+      };
+
+      const res = await fetch("/api/customer/updateCustomer", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.message || data.error || "Failed to update customer.", true);
+        return;
+      }
+
+      showMessage("Customer updated successfully.");
+      await loadAllCustomers();
+    }
+
+    async function deleteCustomer() {
+      const customerId = document.getElementById("customerId").value.trim();
+
+      if (!customerId) {
+        showMessage("Select a customer first.", true);
+        return;
+      }
+
+      const res = await fetch(`/api/customer/deleteCustomer?customerId=${encodeURIComponent(customerId)}`, {
+        method: "DELETE"
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.message || data.error || "Failed to delete customer.", true);
+        return;
+      }
+
+      showMessage("Customer deleted successfully.");
+      document.getElementById("customerForm").reset();
+      await getNextCustomerId();
+      await loadAllCustomers();
+    }
+
+    document.getElementById("customerForm").addEventListener("submit", saveCustomer);
+    document.getElementById("updateCustomer").addEventListener("click", updateCustomer);
+    document.getElementById("deleteCustomer").addEventListener("click", deleteCustomer);
+    document.getElementById("searchCustomerBtn").addEventListener("click", searchCustomer);
+    document.getElementById("loadAllCustomers").addEventListener("click", loadAllCustomers);
+    document.getElementById("newCustomer").addEventListener("click", async () => {
+    document.getElementById("customerForm").reset();
+    document.getElementById("classBalance").value = 0;
+    document.getElementById("senior").value = "false";
+    document.getElementById("preferredContact").value = "email";
+      await getNextCustomerId();
+      showMessage("Ready to add a new customer.");
+    });
+
+    (async function init() {
+      const user = await loadUser();
+      if (!user) return;
+      await getNextCustomerId();
+      await loadAllCustomers();
+    })();
+  </script>
+</body>
+</html>

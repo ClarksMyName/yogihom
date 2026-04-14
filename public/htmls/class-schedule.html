@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yoga H'om • Classes</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body class="layout--sidebar background">
+  <aside class="sidebar">
+    <a class="logo-wrap" href="/htmls/dashboard.html">
+      <img src="../images/HomLogo.png" alt="Yoga H'om Logo" class="logo" />
+    </a>
+
+    <nav class="nav">
+      <a id="dashboard" href="/htmls/dashboard.html">Dashboard</a>
+      <a id="instructors" href="/htmls/instructor.html">Instructors</a>
+      <a id="classes" href="/htmls/class-schedule.html" class="active">Classes</a>
+      <a id="classCheckin" href="/htmls/class-checkin.html">Class Check-In</a>
+      <a id="classRecords" href="/htmls/class-records.html">Class Records</a>
+      <a id="customers" href="/htmls/customers.html">Customers</a>
+      <a id="packageEdit" href="/htmls/package-edit.html">Packages</a>
+      <a id="packageSales" href="/htmls/package-sales.html">Package Sales</a>
+      <a id="userManagement" href="/htmls/user-management.html">User Management</a>
+      <a id="waiver" href="/htmls/waiver.html">Waiver</a>
+      <a id="logout" href="/logout">Logout</a>
+    </nav>
+  </aside>
+
+  <main class="main-bg">
+    <div class="overlay"></div>
+
+    <section class="welcome-box" style="max-width: 1100px;">
+      <h1>Class Schedule</h1>
+      <p id="roleLabel"><strong>Role:</strong> Loading...</p>
+      <p id="pageMessage" class="error-message" style="display:none;"></p>
+
+      <div class="grid-2">
+        <div id="classFormSection">
+          <h2>Add / Update Class</h2>
+          <form id="classForm">
+            <label for="classId">Class ID</label>
+            <input type="text" id="classId" name="classId" readonly />
+
+            <label for="className">Class Name</label>
+            <input type="text" id="className" name="className" required />
+
+            <label for="instructorId">Instructor</label>
+            <select id="instructorId" name="instructorId" class="styled-select" required>
+              <option value="">Select instructor</option>
+            </select>
+
+            <label for="classType">Class Type</label>
+            <select id="classType" name="classType" class="styled-select">
+              <option value="General">General</option>
+              <option value="Special">Special</option>
+            </select>
+
+            <label for="description">Description</label>
+            <textarea id="description" name="description"></textarea>
+
+            <fieldset>
+              <legend>Class Times</legend>
+
+              <div class="grid-2">
+                <div>
+                  <label for="day1">Day 1</label>
+                  <input type="text" id="day1" placeholder="Mon" />
+                </div>
+                <div>
+                  <label for="time1">Time 1</label>
+                  <input type="time" id="time1" />
+                </div>
+              </div>
+              <label for="duration1">Duration 1 (mins)</label>
+              <input type="number" id="duration1" min="1" />
+
+              <div class="grid-2">
+                <div>
+                  <label for="day2">Day 2</label>
+                  <input type="text" id="day2" placeholder="Wed" />
+                </div>
+                <div>
+                  <label for="time2">Time 2</label>
+                  <input type="time" id="time2" />
+                </div>
+              </div>
+              <label for="duration2">Duration 2 (mins)</label>
+              <input type="number" id="duration2" min="1" />
+
+              <div class="grid-2">
+                <div>
+                  <label for="day3">Day 3</label>
+                  <input type="text" id="day3" placeholder="Fri" />
+                </div>
+                <div>
+                  <label for="time3">Time 3</label>
+                  <input type="time" id="time3" />
+                </div>
+              </div>
+              <label for="duration3">Duration 3 (mins)</label>
+              <input type="number" id="duration3" min="1" />
+
+              <div class="grid-2">
+                <div>
+                  <label for="day4">Day 4</label>
+                  <input type="text" id="day4" placeholder="Sun" />
+                </div>
+                <div>
+                  <label for="time4">Time 4</label>
+                  <input type="time" id="time4" />
+                </div>
+              </div>
+              <label for="duration4">Duration 4 (mins)</label>
+              <input type="number" id="duration4" min="1" />
+            </fieldset>
+
+            <div class="btn-row">
+              <button type="submit" class="btn btn--primary" id="saveClass">Save Class</button>
+              <button type="button" class="btn" id="updateClass">Update Class</button>
+              <button type="button" class="btn btn--danger" id="deleteClass">Delete Class</button>
+            </div>
+          </form>
+        </div>
+
+        <div>
+          <h2>Find Class</h2>
+
+          <label for="searchClass">Search by Class Name</label>
+          <input type="text" id="searchClass" placeholder="Enter class name" />
+
+          <div class="btn-row" style="justify-content:flex-start; margin-top: 1rem;">
+            <button type="button" class="btn btn--primary" id="searchClassBtn">Search</button>
+            <button type="button" class="btn" id="loadAllClasses">Load All</button>
+            <button type="button" class="btn" id="newClass">New</button>
+          </div>
+
+          <h2 style="margin-top: 1.5rem;">Class List</h2>
+          <div id="classList" style="text-align:left;"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const pageMessage = document.getElementById("pageMessage");
+
+    function showMessage(message, isError = false) {
+      pageMessage.textContent = message;
+      pageMessage.style.display = "block";
+      pageMessage.style.background = isError ? "#fdeaea" : "#e8f7ee";
+      pageMessage.style.color = isError ? "#b42318" : "#166534";
+      pageMessage.style.borderColor = isError ? "#f5c2c0" : "#b7ebc6";
+    }
+
+    function hideRestrictedLinks(user) {
+      const memberHidden = [
+        "instructors",
+        "classRecords",
+        "customers",
+        "packageEdit",
+        "packageSales",
+        "userManagement"
+    ];
+
+      if (user.role === "member") {
+        memberHidden.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "none";
+        });
+      }
+    }
+
+    async function loadUser() {
+      const res = await fetch("/api/me");
+      if (!res.ok) {
+        window.location.href = "/index.html";
+        return null;
+      }
+
+      const user = await res.json();
+      document.getElementById("roleLabel").innerHTML =
+        "<strong>Role:</strong> " + (user.role || "Unknown");
+
+      hideRestrictedLinks(user);
+
+      if (user.role === "member") {
+        document.getElementById("classFormSection").style.display = "none";
+        document.getElementById("newClass").style.display = "none";
+        document.getElementById("updateClass").style.display = "none";
+        document.getElementById("deleteClass").style.display = "none";
+        document.getElementById("saveClass").style.display = "none";
+      }
+
+      return user;
+    }
+
+    function getDaytimeFromForm() {
+      const slots = [
+        {
+          day: document.getElementById("day1").value.trim(),
+          time: document.getElementById("time1").value,
+          duration: Number(document.getElementById("duration1").value || 0)
+        },
+        {
+          day: document.getElementById("day2").value.trim(),
+          time: document.getElementById("time2").value,
+          duration: Number(document.getElementById("duration2").value || 0)
+        },
+        {
+          day: document.getElementById("day3").value.trim(),
+          time: document.getElementById("time3").value,
+          duration: Number(document.getElementById("duration3").value || 0)
+        },
+        {
+          day: document.getElementById("day4").value.trim(),
+          time: document.getElementById("time4").value,
+          duration: Number(document.getElementById("duration4").value || 0)
+        }
+      ];
+
+      return slots.filter(slot => slot.day && slot.time && slot.duration > 0);
+    }
+
+    function fillDaytime(daytime = []) {
+      const fields = [
+        ["day1", "time1", "duration1"],
+        ["day2", "time2", "duration2"],
+        ["day3", "time3", "duration3"],
+        ["day4", "time4", "duration4"]
+      ];
+
+      fields.forEach(([dayId, timeId, durationId], index) => {
+        const slot = daytime[index] || {};
+        document.getElementById(dayId).value = slot.day || "";
+        document.getElementById(timeId).value = slot.time || "";
+        document.getElementById(durationId).value = slot.duration || "";
+      });
+    }
+
+    function fillForm(cls) {
+      document.getElementById("classId").value = cls.classId || "";
+      document.getElementById("className").value = cls.className || "";
+      document.getElementById("instructorId").value = cls.instructorId || "";
+      document.getElementById("classType").value = cls.classType || "General";
+      document.getElementById("description").value = cls.description || "";
+      fillDaytime(cls.daytime || []);
+    }
+
+    function renderClassList(classes) {
+      const list = document.getElementById("classList");
+
+      if (!Array.isArray(classes) || classes.length === 0) {
+        list.innerHTML = "<p>No classes found.</p>";
+        return;
+      }
+
+      list.innerHTML = classes.map(cls => `
+        <div class="card" style="max-width:none; margin-bottom: 1rem; padding: 1rem;">
+          <strong>${cls.classId}</strong><br>
+          ${cls.className || ""}<br>
+          Instructor: ${cls.instructorId || ""}<br>
+          Type: ${cls.classType || ""}<br>
+          ${cls.description || ""}
+          <div style="margin-top: 0.75rem;">
+            <button class="btn btn--primary" onclick="selectClass('${cls.classId}')">Select</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    window.selectClass = async function(classId) {
+      const res = await fetch(`/api/class/getClass?classId=${encodeURIComponent(classId)}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.message || data.error || "Failed to load class.", true);
+        return;
+      }
+
+      fillForm(data);
+      showMessage("Class loaded.");
+    };
+
+    async function getNextClassId() {
+      const res = await fetch("/api/class/getNextId");
+      const data = await res.json();
+      document.getElementById("classId").value = data.nextId || "";
+    }
+
+    async function loadAllClasses() {
+      const res = await fetch("/api/class/getAll");
+      const data = await res.json();
+      renderClassList(data);
+    }
+
+    async function loadInstructorIds() {
+      const res = await fetch("/api/instructor/getInstructorIds");
+      const data = await res.json();
+
+      const select = document.getElementById("instructorId");
+      select.innerHTML = '<option value="">Select instructor</option>';
+
+      if (Array.isArray(data)) {
+        data.forEach(instructor => {
+          const option = document.createElement("option");
+          option.value = instructor.instructorId;
+          option.textContent =
+            `${instructor.instructorId} - ${instructor.firstName || ""} ${instructor.lastName || ""}`.trim();
+          select.appendChild(option);
+        });
+      }
+    }
+
+    async function searchClass() {
+      const className = document.getElementById("searchClass").value.trim();
+
+      if (!className) {
+        showMessage("Enter a class name to search.", true);
+        return;
+      }
+
+      const res = await fetch(`/api/class/search?className=${encodeURIComponent(className)}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        renderClassList([]);
+        showMessage(data.message || "No class found.", true);
+        return;
+      }
+
+      renderClassList(data);
+    }
+
+    async function saveClass(event) {
+      event.preventDefault();
+
+      const payload = {
+        classId: document.getElementById("classId").value.trim(),
+        className: document.getElementById("className").value.trim(),
+        instructorId: document.getElementById("instructorId").value,
+        classType: document.getElementById("classType").value,
+        description: document.getElementById("description").value.trim(),
+        daytime: getDaytimeFromForm()
+      };
+
+      const res = await fetch("/api/class/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.message || data.error || "Failed to add class.", true);
+        return;
+      }
+
+      showMessage("Class added successfully.");
+      document.getElementById("classForm").reset();
+      fillDaytime([]);
+      await getNextClassId();
+      await loadAllClasses();
+    }
+
+    async function updateClass() {
+      const payload = {
+        classId: document.getElementById("classId").value.trim(),
+        className: document.getElementById("className").value.trim(),
+        instructorId: document.getElementById("instructorId").value,
+        classType: document.getElementById("classType").value,
+        description: document.getElementById("description").value.trim(),
+        daytime: getDaytimeFromForm()
+      };
+
+      const res = await fetch("/api/class/updateClass", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.message || data.error || "Failed to update class.", true);
+        return;
+      }
+
+      showMessage("Class updated successfully.");
+      await loadAllClasses();
+    }
+
+    async function deleteClass() {
+      const classId = document.getElementById("classId").value.trim();
+
+      if (!classId) {
+        showMessage("Select a class first.", true);
+        return;
+      }
+
+      const res = await fetch(`/api/class/deleteClass?classId=${encodeURIComponent(classId)}`, {
+        method: "DELETE"
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.message || data.error || "Failed to delete class.", true);
+        return;
+      }
+
+      showMessage("Class deleted successfully.");
+      document.getElementById("classForm").reset();
+      fillDaytime([]);
+      await getNextClassId();
+      await loadAllClasses();
+    }
+
+    document.getElementById("classForm").addEventListener("submit", saveClass);
+    document.getElementById("updateClass").addEventListener("click", updateClass);
+    document.getElementById("deleteClass").addEventListener("click", deleteClass);
+    document.getElementById("searchClassBtn").addEventListener("click", searchClass);
+    document.getElementById("loadAllClasses").addEventListener("click", loadAllClasses);
+    document.getElementById("newClass").addEventListener("click", async () => {
+      document.getElementById("classForm").reset();
+      fillDaytime([]);
+      await getNextClassId();
+      showMessage("Ready to add a new class.");
+    });
+
+    (async function init() {
+      const user = await loadUser();
+      if (!user) return;
+      await loadInstructorIds();
+      await getNextClassId();
+      await loadAllClasses();
+    })();
+  </script>
+</body>
+</html>

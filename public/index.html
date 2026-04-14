@@ -1,16 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>YogiTrack • Welcome</title>
-  <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yoga H'om • Welcome</title>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body class="layout--center">
   <main class="card card--wide text--center">
-    <img src="images/Logo.png" alt="YogiTrack Logo" class="logo">
-    <h1>Welcome to YogiTrack</h1>
+    <img src="images/HomLogo.png" alt="Yoga H'om Logo" class="logo" />
+    <h1>Welcome to Yoga H'om</h1>
     <p>Your all-in-one studio management companion.</p>
-    <a class="btn btn--primary" href="htmls/dashboard.html">Log&nbsp;in</a>
+
+    <p id="error-message" class="error-message" style="display:none;"></p>
+
+    <h2>Login</h2>
+    <form action="/login" method="POST">
+      <input type="text" name="username" placeholder="Username" required />
+      <input type="password" name="password" placeholder="Password" required />
+      <button class="btn btn--primary" type="submit">Login</button>
+    </form>
+
+    <hr />
+
+    <h2>Create Account</h2>
+    <p style="margin-top: 12px;">Don’t have an account?</p>
+    <a class="btn" href="/htmls/register.html">Create one here</a>
   </main>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get("error");
+    const errorBox = document.getElementById("error-message");
+
+    if (error) {
+      let message = "";
+
+      if (error === "login_failed") {
+        message = "Invalid username or password.";
+      } else if (error === "missing_fields") {
+        message = "Please fill in all required fields.";
+      }
+
+      if (message) {
+        errorBox.textContent = message;
+        errorBox.style.display = "block";
+      }
+
+      window.history.replaceState({}, document.title, "/index.html");
+    }
+  </script>
 </body>
 </html>

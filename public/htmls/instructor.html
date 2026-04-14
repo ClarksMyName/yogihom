@@ -1,90 +1,352 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>YogiTrack • Instructors</title>
-  <link rel="stylesheet" href="../css/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yoga H'om • Instructors</title>
+  <link rel="stylesheet" href="../css/style.css" />
 </head>
-<body class="layout--sidebar">
-  <!-- Re-use the same sidebar -->
+<body class="layout--sidebar background">
   <aside class="sidebar">
-    <a class="logo-wrap" href="dashboard.html">
-      <img src="../images/Logo.png" alt="YogaTrack Logo" class="logo">
+    <a class="logo-wrap" href="/htmls/dashboard.html">
+      <img src="../images/HomLogo.png" alt="Yoga H'om Logo" class="logo" />
     </a>
+
     <nav class="nav">
-         <a href="instructor.html">Instructors</a>
-        <a href="#">Packages</a>
-        <a href="#">Class Schedule</a>
-        <a href="#">Customers</a>
-        <a href="#">Check-ins</a>
-        <a href="../index.html">Log Out</a>
+      <a id="dashboard" href="/htmls/dashboard.html">Dashboard</a>
+      <a id="instructors" href="/htmls/instructor.html" class="active">Instructors</a>
+      <a id="classes" href="/htmls/class-schedule.html">Classes</a>
+      <a id="classCheckin" href="/htmls/class-checkin.html">Class Check-In</a>
+      <a id="classRecords" href="/htmls/class-records.html">Class Records</a>
+      <a id="customers" href="/htmls/customers.html">Customers</a>
+      <a id="packageEdit" href="/htmls/package-edit.html">Packages</a>
+      <a id="packageSales" href="/htmls/package-sales.html">Package Sales</a>
+      <a id="userManagement" href="/htmls/user-management.html">User Management</a>
+      <a id="waiver" href="/htmls/waiver.html">Waiver</a>
+      <a id="logout" href="/logout">Logout</a>
     </nav>
   </aside>
 
-  <!-- Instructor form -->
-  <main class="layout--center">
-    <form class="card" id="instructorForm" >
-      <h2>Instructor Details</h2>
+  <main class="main-bg">
+    <div class="overlay"></div>
 
-      <!-- Instructor Id-->
-      <label id = "instructorIdLabel" for="instructorID">Instructor ID
-        <select name="instructorId" id="instructorIdSelect" class="form-input" required>
-          <option value=""> -- Select Instructor Id --</option>
-          <!-- Options will be populated by JavaScript-->
-        </select>
-      </label>
-
-      <label>
-        <!-- Toggle with InstructorIdLabel -->
-         <label id="instructorIdTextLabel" style="display: none;">Instructor ID</label>
-         <input id="instructorIdText" type="text" readonly/>
-      </label>
-
-      <input type="text" id="instructorIdText" name="instructorId" readonly hidden />
-
+    <section class="welcome-box" style="max-width: 1000px;">
+      <h1>Instructor Management</h1>
+      <p id="roleLabel"><strong>Role:</strong> Loading...</p>
+      <p id="pageMessage" class="error-message" style="display:none;"></p>
 
       <div class="grid-2">
-        <label>First&nbsp;Name
-          <input type="text" name="firstname">
-        </label>
-        <label>Last&nbsp;Name
-          <input type="text" name="lastname">
-        </label>
-      </div>
+        <div id="instructorFormSection">
+          <h2>Add / Update Instructor</h2>
+          <form id="instructorForm">
+            <label for="instructorId">Instructor ID</label>
+            <input type="text" id="instructorId" name="instructorId" readonly />
 
-      <label>Address
-        <textarea name="address" rows="2"></textarea>
-      </label>
+            <label for="userId">Linked User ID</label>
+            <input type="text" id="userId" name="userId" placeholder="Example: ST001" />
 
-      <div class="grid-2">
-        <label>Phone
-          <input type="tel" name="phone">
-        </label>
-        <label>Email
-          <input type="email" name="email">
-        </label>
-      </div>
+            <label for="username">Linked Username</label>
+            <input type="text" id="username" name="username" placeholder="Enter username" />
 
-      <fieldset>
-        <legend>Preferred Contact</legend>
-        <div class="radio-row">
-          <label><input type="radio" name="pref" value="phone">Phone</label>
-          <label><input type="radio" name="pref" value="email">Email</label>
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName" name="firstName" required />
+
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName" name="lastName" required />
+
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required />
+
+            <label for="phone">Phone</label>
+            <input type="text" id="phone" name="phone" required />
+
+            <label for="address">Address</label>
+            <textarea id="address" name="address"></textarea>
+
+            <label for="preferredContact">Preferred Contact</label>
+            <select id="preferredContact" name="preferredContact" class="styled-select">
+              <option value="email">Email</option>
+              <option value="phone">Phone</option>
+            </select>
+
+            <div class="btn-row">
+              <button type="submit" class="btn btn--primary" id="saveInstructor">Save Instructor</button>
+              <button type="button" class="btn" id="updateInstructor">Update Instructor</button>
+              <button type="button" class="btn btn--danger" id="deleteInstructor">Delete Instructor</button>
+            </div>
+          </form>
         </div>
-      </fieldset>
 
-      <!-- Action buttons -->
-      <div class="btn-row">
-        <button type="button" class="btn" id="searchBtn">Search</button>
-        <button type="button" class="btn btn--primary", id="addBtn">Add&nbsp;New</button>
-        <button type="button" class="btn", id="saveBtn">Save</button>
-        <button type="button" class="btn btn--danger" id="deleteBtn">Delete</button>
-        <button type="button" class="btn" onclick="clearInstructorForm()">Clear</button>
-        <a href="dashboard.html" class="btn">Exit</a>
+        <div>
+          <h2>Find Instructor</h2>
+
+          <label for="searchInstructorValue">Search by Instructor ID, User ID, Username, or Name</label>
+          <input
+            type="text"
+            id="searchInstructorValue"
+            placeholder="Enter I001, ST001, username, first name, or last name"
+          />
+
+          <div class="btn-row" style="justify-content:flex-start; margin-top: 1rem;">
+            <button type="button" class="btn btn--primary" id="searchInstructor">Search</button>
+            <button type="button" class="btn" id="loadAllInstructors">Load All</button>
+            <button type="button" class="btn" id="newInstructor">New</button>
+          </div>
+
+          <h2 style="margin-top: 1.5rem;">Instructor List</h2>
+          <div id="instructorList" style="text-align:left;"></div>
+        </div>
       </div>
-    </form>
+    </section>
   </main>
 
-<script src="../js/instructor.js"></script>
+  <script>
+    const pageMessage = document.getElementById("pageMessage");
+
+    function showMessage(message, isError = false) {
+      pageMessage.textContent = message;
+      pageMessage.style.display = "block";
+      pageMessage.style.background = isError ? "#fdeaea" : "#e8f7ee";
+      pageMessage.style.color = isError ? "#b42318" : "#166534";
+      pageMessage.style.borderColor = isError ? "#f5c2c0" : "#b7ebc6";
+    }
+
+    function hideRestrictedLinks(user) {
+      const memberHidden = [
+        "instructors",
+        "classRecords",
+        "customers",
+        "packageEdit",
+        "packageSale",
+        "packageSales",
+        "userManagement"
+      ];
+
+      if (user.role === "member") {
+        memberHidden.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "none";
+        });
+      }
+    }
+
+    async function loadUser() {
+      const res = await fetch("/api/me");
+      if (!res.ok) {
+        window.location.href = "/index.html";
+        return null;
+      }
+
+      const user = await res.json();
+
+      document.getElementById("roleLabel").innerHTML =
+        "<strong>Role:</strong> " + (user.role || "Unknown");
+
+      hideRestrictedLinks(user);
+
+      if (user.role === "member") {
+        showMessage("Members do not have access to Instructor Management.", true);
+        document.getElementById("instructorFormSection").style.display = "none";
+        document.getElementById("searchInstructorValue").style.display = "none";
+        document.getElementById("searchInstructor").style.display = "none";
+        document.getElementById("loadAllInstructors").style.display = "none";
+        document.getElementById("newInstructor").style.display = "none";
+        return null;
+      }
+
+      return user;
+    }
+
+    function fillForm(instructor) {
+      document.getElementById("instructorId").value = instructor.instructorId || "";
+      document.getElementById("userId").value = instructor.userId || "";
+      document.getElementById("username").value = instructor.username || "";
+      document.getElementById("firstName").value = instructor.firstName || "";
+      document.getElementById("lastName").value = instructor.lastName || "";
+      document.getElementById("email").value = instructor.email || "";
+      document.getElementById("phone").value = instructor.phone || "";
+      document.getElementById("address").value = instructor.address || "";
+      document.getElementById("preferredContact").value = instructor.preferredContact || "email";
+    }
+
+    function renderInstructorList(instructors) {
+      const list = document.getElementById("instructorList");
+
+      if (!Array.isArray(instructors) || instructors.length === 0) {
+        list.innerHTML = "<p>No instructors found.</p>";
+        return;
+      }
+
+      list.innerHTML = instructors.map(instructor => `
+        <div class="card" style="max-width:none; margin-bottom: 1rem; padding: 1rem;">
+          <strong>${instructor.instructorId}</strong><br>
+          ${instructor.firstName || ""} ${instructor.lastName || ""}<br>
+          User ID: ${instructor.userId || "N/A"}<br>
+          Username: ${instructor.username || "N/A"}<br>
+          ${instructor.email || ""}<br>
+          ${instructor.phone || ""}
+          <div style="margin-top: 0.75rem;">
+            <button class="btn btn--primary" onclick="selectInstructor('${instructor.instructorId}')">Select</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    window.selectInstructor = async function (instructorId) {
+      try {
+        const res = await fetch(`/api/instructor/getInstructor?instructorId=${encodeURIComponent(instructorId)}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          showMessage(data.message || data.error || "Failed to load instructor.", true);
+          return;
+        }
+
+        fillForm(data);
+        showMessage("Instructor loaded.");
+      } catch (err) {
+        showMessage("Failed to load instructor.", true);
+      }
+    };
+
+    async function getNextInstructorId() {
+      const res = await fetch("/api/instructor/getNextId");
+      const data = await res.json();
+      document.getElementById("instructorId").value = data.nextId || "";
+    }
+
+    async function loadAllInstructors() {
+      const res = await fetch("/api/instructor/getAll");
+      const data = await res.json();
+      renderInstructorList(data);
+    }
+
+    async function searchInstructor() {
+      const search = document.getElementById("searchInstructorValue").value.trim();
+
+      if (!search) {
+        showMessage("Enter an Instructor ID, User ID, Username, or Name to search.", true);
+        return;
+      }
+
+      const res = await fetch(`/api/instructor/search?search=${encodeURIComponent(search)}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        renderInstructorList([]);
+        showMessage(data.message || "No instructor found.", true);
+        return;
+      }
+
+      renderInstructorList(data);
+    }
+
+    async function saveInstructor(event) {
+      event.preventDefault();
+
+      const payload = {
+        instructorId: document.getElementById("instructorId").value.trim(),
+        userId: document.getElementById("userId").value.trim(),
+        username: document.getElementById("username").value.trim(),
+        firstName: document.getElementById("firstName").value.trim(),
+        lastName: document.getElementById("lastName").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        address: document.getElementById("address").value.trim(),
+        preferredContact: document.getElementById("preferredContact").value
+      };
+
+      const res = await fetch("/api/instructor/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.message || data.error || "Failed to add instructor.", true);
+        return;
+      }
+
+      showMessage("Instructor added successfully.");
+      document.getElementById("instructorForm").reset();
+      await getNextInstructorId();
+      await loadAllInstructors();
+    }
+
+    async function updateInstructor() {
+      const payload = {
+        instructorId: document.getElementById("instructorId").value.trim(),
+        userId: document.getElementById("userId").value.trim(),
+        username: document.getElementById("username").value.trim(),
+        firstName: document.getElementById("firstName").value.trim(),
+        lastName: document.getElementById("lastName").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        address: document.getElementById("address").value.trim(),
+        preferredContact: document.getElementById("preferredContact").value
+      };
+
+      const res = await fetch("/api/instructor/updateInstructor", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.message || data.error || "Failed to update instructor.", true);
+        return;
+      }
+
+      showMessage("Instructor updated successfully.");
+      await loadAllInstructors();
+    }
+
+    async function deleteInstructor() {
+      const instructorId = document.getElementById("instructorId").value.trim();
+
+      if (!instructorId) {
+        showMessage("Select an instructor first.", true);
+        return;
+      }
+
+      const res = await fetch(`/api/instructor/deleteInstructor?instructorId=${encodeURIComponent(instructorId)}`, {
+        method: "DELETE"
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.message || data.error || "Failed to delete instructor.", true);
+        return;
+      }
+
+      showMessage("Instructor deleted successfully.");
+      document.getElementById("instructorForm").reset();
+      await getNextInstructorId();
+      await loadAllInstructors();
+    }
+
+    document.getElementById("instructorForm").addEventListener("submit", saveInstructor);
+    document.getElementById("updateInstructor").addEventListener("click", updateInstructor);
+    document.getElementById("deleteInstructor").addEventListener("click", deleteInstructor);
+    document.getElementById("searchInstructor").addEventListener("click", searchInstructor);
+    document.getElementById("loadAllInstructors").addEventListener("click", loadAllInstructors);
+    document.getElementById("newInstructor").addEventListener("click", async () => {
+      document.getElementById("instructorForm").reset();
+      await getNextInstructorId();
+      showMessage("Ready to add a new instructor.");
+    });
+
+    (async function init() {
+      const user = await loadUser();
+      if (!user) return;
+      await getNextInstructorId();
+      await loadAllInstructors();
+    })();
+  </script>
 </body>
 </html>

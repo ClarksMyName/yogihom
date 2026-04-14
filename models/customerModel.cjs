@@ -1,27 +1,19 @@
 const mongoose = require("mongoose");
 
-const instructorSchema = new mongoose.Schema(
+const customerSchema = new mongoose.Schema(
   {
-    instructorId: {
+    customerId: {
       type: String,
       required: true,
       unique: true
     },
-    userId: {
-      type: String,
-      default: ""
-    },
-    username: {
-      type: String,
-      default: ""
-    },
     firstName: {
       type: String,
-      required: true
+      default: ""
     },
     lastName: {
       type: String,
-      required: true
+      default: ""
     },
     email: {
       type: String,
@@ -31,6 +23,10 @@ const instructorSchema = new mongoose.Schema(
       type: String,
       default: ""
     },
+    senior: {
+      type: Boolean,
+      default: false
+    },
     address: {
       type: String,
       default: ""
@@ -38,9 +34,13 @@ const instructorSchema = new mongoose.Schema(
     preferredContact: {
       type: String,
       default: "email"
+    },
+    classBalance: {
+      type: Number,
+      default: 0
     }
   },
-  { collection: "instructor" }
+  { collection: "customer" }
 );
 
-module.exports = mongoose.model("Instructor", instructorSchema);
+module.exports = mongoose.model("Customer", customerSchema);

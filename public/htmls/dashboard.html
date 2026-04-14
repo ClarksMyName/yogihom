@@ -1,36 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>YogiTrack • Dashboard</title>
-  <link rel="stylesheet" href="../css/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yoga H'om • Dashboard</title>
+  <link rel="stylesheet" href="../css/style.css" />
 </head>
+<body class="layout--sidebar background">
+  <aside class="sidebar">
+    <a class="logo-wrap" href="/htmls/dashboard.html">
+      <img src="../images/HomLogo.png" alt="Yoga H'om Logo" class="logo" />
+    </a>
 
-<body>
-  <!-- Overlay first: full-screen dimmer behind everything -->
-  <div class="background">
-    <div class="overlay">
+    <nav class="nav">
+      <a id="dashboard" href="/htmls/dashboard.html" class="active">Dashboard</a>
+      <a id="instructors" href="/htmls/instructor.html">Instructors</a>
+      <a id="classes" href="/htmls/class-schedule.html">Classes</a>
+      <a id="classCheckin" href="/htmls/class-checkin.html">Class Check-In</a>
+      <a id="classRecords" href="/htmls/class-records.html">Class Records</a>
+      <a id="customers" href="/htmls/customers.html">Customers</a>
+      <a id="packageEdit" href="/htmls/package-edit.html">Packages</a>
+      <a id="packageSales" href="/htmls/package-sales.html">Package Sales</a>
+      <a id="userManagement" href="/htmls/user-management.html">User Management</a>
+      <a id="waiver" href="/htmls/waiver.html">Waiver</a>
+      <a id="logout" href="/logout">Logout</a>
+    </nav>
+  </aside>
 
-  <div class="layout--sidebar">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <a class="logo-wrap" href="dashboard.html">
-        <img src="../images/Logo.png" alt="YogiTrack Logo" class="logo" />
+  <main class="main-bg">
+    <div class="overlay"></div>
 
-      </a>
-      <nav class="nav">
-        <a href="instructor.html">Instructors</a>
-        <a href="#">Packages</a>
-        <a href="#">Class Schedule</a>
-        <a href="#">Customers</a>
-        <a href="#">Check-ins</a>
-        <a href="../index.html">Log Out</a>
-      </nav>
-    </aside>
+    <section class="welcome-box">
+      <h1>Dashboard</h1>
+      <p>Welcome to Yoga H'om.</p>
+      <p id="roleLabel"><strong>Role:</strong> Loading...</p>
+      <p id="userIdLabel"><strong>User ID:</strong> Loading...</p>
+      <p id="customerIdLabel"><strong>Customer ID:</strong> Loading...</p>
 
+      <div class="btn-row">
+        <a id="viewClasses" class="btn btn--primary" href="/htmls/class-schedule.html">View Classes</a>
+        <a id="checkIn" class="btn btn--primary" href="/htmls/class-checkin.html">Check In</a>
+        <a id="waiverBtn" class="btn btn--primary" href="/htmls/waiver.html">Waiver</a>
+      </div>
+    </section>
+  </main>
 
-  </div>
-    </div> <!-- End of background wrapper -->
+  <script>
+    async function loadDashboard() {
+      try {
+        const res = await fetch("/api/me");
+        if (!res.ok) {
+          window.location.href = "/index.html";
+          return;
+        }
+
+        const user = await res.json();
+
+        document.getElementById("roleLabel").innerHTML =
+          "<strong>Role:</strong> " + (user.role || "Unknown");
+
+        document.getElementById("userIdLabel").innerHTML =
+          "<strong>User ID:</strong> " + (user.userId || "N/A");
+
+        document.getElementById("customerIdLabel").innerHTML =
+          "<strong>Customer ID:</strong> " + (user.customerId || "N/A");
+
+        const memberHidden = [
+          "instructors",
+          "classRecords",
+          "customers",
+          "packageEdit",
+          "packageSale",
+          "packageSales",
+          "userManagement"
+        ];
+
+        if (user.role === "member") {
+          memberHidden.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "none";
+        });
+
+        document.getElementById("viewClasses").textContent = "View Classes";
+        document.getElementById("viewClasses").href = "/htmls/class-schedule.html";
+
+        document.getElementById("checkIn").textContent = "Check In";
+        document.getElementById("checkIn").href = "/htmls/class-checkin.html";
+
+        document.getElementById("waiverBtn").textContent = "Waiver";
+        document.getElementById("waiverBtn").href = "/htmls/waiver.html";
+      }
+
+      if (user.role === "admin" || user.role === "staff") {
+        document.getElementById("viewClasses").textContent = "Manage Customers";
+        document.getElementById("viewClasses").href = "/htmls/customers.html";
+
+        document.getElementById("checkIn").textContent = "Manage Classes";
+        document.getElementById("checkIn").href = "/htmls/class-schedule.html";
+
+        document.getElementById("waiverBtn").textContent = "Package Sales";
+        document.getElementById("waiverBtn").href = "/htmls/package-sales.html";
+      }
+      
+      } catch (err) {
+        console.error("Failed to load dashboard:", err);
+        window.location.href = "/index.html";
+      }
+    }
+
+    loadDashboard();
+  </script>
 </body>
-
 </html>

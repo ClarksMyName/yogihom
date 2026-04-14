@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yoga H'om • Package Sales</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body class="layout--sidebar background">
+  <aside class="sidebar">
+    <a class="logo-wrap" href="/htmls/dashboard.html">
+      <img src="../images/HomLogo.png" alt="Yoga H'om Logo" class="logo" />
+    </a>
+
+    <nav class="nav">
+      <a id="dashboard" href="/htmls/dashboard.html">Dashboard</a>
+      <a id="instructors" href="/htmls/instructor.html">Instructors</a>
+      <a id="classes" href="/htmls/class-schedule.html">Classes</a>
+      <a id="classCheckin" href="/htmls/class-checkin.html">Class Check-In</a>
+      <a id="classRecords" href="/htmls/class-records.html">Class Records</a>
+      <a id="customers" href="/htmls/customers.html">Customers</a>
+      <a id="packageEdit" href="/htmls/package-edit.html">Packages</a>
+      <a id="packageSales" href="/htmls/package-sales.html" class="active">Package Sales</a>
+      <a id="userManagement" href="/htmls/user-management.html">User Management</a>
+      <a id="waiver" href="/htmls/waiver.html">Waiver</a>
+      <a id="logout" href="/logout">Logout</a>
+    </nav>
+  </aside>
+
+  <main class="main-bg">
+    <div class="overlay"></div>
+
+    <section class="welcome-box" style="max-width: 1000px;">
+      <h1>Package Sales</h1>
+      <p id="roleLabel"><strong>Role:</strong> Loading...</p>
+      <p id="pageMessage" class="error-message" style="display:none;"></p>
+
+      <div class="grid-2">
+        <div id="saleFormSection">
+          <h2>Record Package Sale</h2>
+
+          <form id="saleForm">
+            <label for="saleId">Sale ID</label>
+            <input type="text" id="saleId" name="saleId" readonly />
+
+            <label for="customerId">Customer</label>
+            <select id="customerId" name="customerId" class="styled-select" required>
+              <option value="">Select customer</option>
+            </select>
+
+            <label for="packageId">Package</label>
+            <select id="packageId" name="packageId" class="styled-select" required>
+              <option value="">Select package</option>
+            </select>
+
+            <label for="purchaseDate">Purchase Date</label>
+            <input type="date" id="purchaseDate" name="purchaseDate" required />
+
+            <label for="startDate">Start Date</label>
+            <input type="date" id="startDate" name="startDate" required />
+
+            <label for="endDate">End Date</label>
+            <input type="date" id="endDate" name="endDate" required />
+
+            <label for="amountPaid">Amount Paid</label>
+            <input type="number" id="amountPaid" name="amountPaid" min="0" step="0.01" required />
+
+            <div class="btn-row">
+              <button type="submit" class="btn btn--primary" id="saveSale">Save Sale</button>
+              <button type="button" class="btn" id="newSale">New</button>
+            </div>
+          </form>
+        </div>
+
+        <div>
+          <h2>Find Sales</h2>
+
+          <label for="searchSales">Search by Sale ID, Customer ID, or Package ID</label>
+          <input type="text" id="searchSales" placeholder="Enter S001, C001, P001, or SP001" />
+
+          <div class="btn-row" style="justify-content:flex-start; margin-top: 1rem;">
+            <button type="button" class="btn btn--primary" id="searchSalesBtn">Search</button>
+            <button type="button" class="btn" id="loadAllSales">Load All</button>
+          </div>
+
+          <h2 style="margin-top: 1.5rem;">Sales List</h2>
+          <div id="salesList" style="text-align:left;"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const pageMessage = document.getElementById("pageMessage");
+
+    function showMessage(message, isError = false) {
+      pageMessage.textContent = message;
+      pageMessage.style.display = "block";
+      pageMessage.style.background = isError ? "#fdeaea" : "#e8f7ee";
+      pageMessage.style.color = isError ? "#b42318" : "#166534";
+      pageMessage.style.borderColor = isError ? "#f5c2c0" : "#b7ebc6";
+    }
+
+    function hideRestrictedLinks(user) {
+      const memberHidden = [
+        "instructors",
+        "classRecords",
+        "customers",
+        "packageEdit",
+        "packageSales",
+        "userManagement"
+      ];
+
+      if (user.role === "member") {
+        memberHidden.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "none";
+        });
+      }
+    }
+
+    async function loadUser() {
+      const res = await fetch("/api/me");
+      if (!res.ok) {
+        window.location.href = "/index.html";
+        return null;
+      }
+
+      const user = await res.json();
+      document.getElementById("roleLabel").innerHTML =
+        "<strong>Role:</strong> " + (user.role || "Unknown");
+
+      hideRestrictedLinks(user);
+
+      if (user.role === "member") {
+        showMessage("Members do not have access to Package Sales.", true);
+        document.getElementById("saleFormSection").style.display = "none";
+        document.getElementById("searchSales").style.display = "none";
+        document.getElementById("searchSalesBtn").style.display = "none";
+        document.getElementById("loadAllSales").style.display = "none";
+        return null;
+      }
+
+      return user;
+    }
+
+    function renderSalesList(sales) {
+      const list = document.getElementById("salesList");
+
+      if (!Array.isArray(sales) || sales.length === 0) {
+        list.innerHTML = "<p>No sales found.</p>";
+        return;
+      }
+
+      list.innerHTML = sales.map(sale => `
+        <div class="card" style="max-width:none; margin-bottom: 1rem; padding: 1rem;">
+          <strong>${sale.saleId}</strong><br>
+          Customer: ${sale.customerId}<br>
+          Package: ${sale.packageId}<br>
+          Purchase Date: ${sale.purchaseDate || ""}<br>
+          Start Date: ${sale.startDate || ""}<br>
+          End Date: ${sale.endDate || ""}<br>
+          Amount Paid: $${Number(sale.amountPaid || 0).toFixed(2)}
+        </div>
+      `).join("");
+    }
+
+    async function getNextSaleId() {
+      const res = await fetch("/api/packageSale/getNextId");
+      const data = await res.json();
+      document.getElementById("saleId").value = data.nextId || "";
+    }
+
+    async function loadCustomers() {
+      const res = await fetch("/api/customer/getAll");
+      const data = await res.json();
+
+      const select = document.getElementById("customerId");
+      select.innerHTML = '<option value="">Select customer</option>';
+
+      if (Array.isArray(data)) {
+        data.forEach(customer => {
+          const option = document.createElement("option");
+          option.value = customer.customerId;
+          option.textContent = `${customer.customerId} - ${customer.firstName || ""} ${customer.lastName || ""}`.trim();
+          select.appendChild(option);
+        });
+      }
+    }
+
+    async function loadPackages() {
+      const res = await fetch("/api/package/getAll");
+      const data = await res.json();
+
+      const select = document.getElementById("packageId");
+      select.innerHTML = '<option value="">Select package</option>';
+
+      if (Array.isArray(data)) {
+        data.forEach(pkg => {
+          const option = document.createElement("option");
+          option.value = pkg.packageId;
+          option.textContent = `${pkg.packageId} - ${pkg.packageName || ""}`.trim();
+          select.appendChild(option);
+        });
+      }
+    }
+
+    async function autofillPackagePrice() {
+      const packageId = document.getElementById("packageId").value;
+      if (!packageId) return;
+
+      const res = await fetch(`/api/package/getPackage?packageId=${encodeURIComponent(packageId)}`);
+      const data = await res.json();
+
+      if (res.ok) {
+        document.getElementById("amountPaid").value = data.price ?? "";
+      }
+    }
+
+    async function loadAllSales() {
+      const res = await fetch("/api/packageSale/getAll");
+      const data = await res.json();
+      renderSalesList(data);
+    }
+
+    async function searchSales() {
+      const search = document.getElementById("searchSales").value.trim();
+
+      if (!search) {
+        showMessage("Enter a Sale ID, Customer ID, or Package ID to search.", true);
+        return;
+      }
+
+      const res = await fetch(`/api/packageSale/search?search=${encodeURIComponent(search)}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        renderSalesList([]);
+        showMessage(data.message || "No sales found.", true);
+        return;
+      }
+
+      renderSalesList(data);
+    }
+
+    async function saveSale(event) {
+      event.preventDefault();
+
+      const payload = {
+        saleId: document.getElementById("saleId").value.trim(),
+        customerId: document.getElementById("customerId").value,
+        packageId: document.getElementById("packageId").value,
+        purchaseDate: document.getElementById("purchaseDate").value,
+        startDate: document.getElementById("startDate").value,
+        endDate: document.getElementById("endDate").value,
+        amountPaid: Number(document.getElementById("amountPaid").value || 0)
+      };
+
+      const res = await fetch("/api/packageSale/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showMessage(data.message || data.error || "Failed to save sale.", true);
+        return;
+      }
+
+      showMessage("Sale recorded successfully.");
+      document.getElementById("saleForm").reset();
+      const today = new Date().toISOString().split("T")[0];
+      document.getElementById("purchaseDate").value = today;
+      document.getElementById("startDate").value = today;
+      await getNextSaleId();
+      await loadAllSales();
+    }
+
+    function resetSaleForm() {
+      document.getElementById("saleForm").reset();
+      const today = new Date().toISOString().split("T")[0];
+      document.getElementById("purchaseDate").value = today;
+      document.getElementById("startDate").value = today;
+    }
+
+    document.getElementById("saleForm").addEventListener("submit", saveSale);
+    document.getElementById("searchSalesBtn").addEventListener("click", searchSales);
+    document.getElementById("loadAllSales").addEventListener("click", loadAllSales);
+    document.getElementById("newSale").addEventListener("click", async () => {
+      resetSaleForm();
+      await getNextSaleId();
+      showMessage("Ready to record a new sale.");
+    });
+    document.getElementById("packageId").addEventListener("change", autofillPackagePrice);
+
+    (async function init() {
+      const user = await loadUser();
+      if (!user) return;
+
+      resetSaleForm();
+      await getNextSaleId();
+      await loadCustomers();
+      await loadPackages();
+      await loadAllSales();
+    })();
+  </script>
+</body>
+</html>
